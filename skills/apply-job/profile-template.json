@@ -79,12 +79,9 @@
     "start_date": "Flexible"
   },
   "application_defaults": {
+    "_comment": "EEO/self-identification, work authorization, salary, and signature fields are intentionally absent. The agent must leave those blank and ask you to answer them directly - they are legally meaningful and must not be auto-filled.",
     "years_experience": "0-2",
-    "education_level": "Bachelor's",
-    "gender": "Prefer not to say",
-    "race_ethnicity": "Prefer not to say",
-    "veteran_status": "No",
-    "disability_status": "No"
+    "education_level": "Bachelor's"
   },
   "resume_file": "~/job-applier-agent/resume/MyResume.pdf"
 }

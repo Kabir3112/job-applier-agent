@@ -17,20 +17,13 @@ Complete installation and configuration guide for the Job Application Agent.
 
 1. **Claude Code CLI** installed and authenticated
 2. **Node.js** 18+ (for Playwright MCP)
-3. **Gmail account** logged in (for sending emails)
-4. **LinkedIn account** logged in (for recruiter outreach)
+3. A browser you are logged into for job sites (the skill never touches Gmail or LinkedIn)
 
 ---
 
 ## Quick Install
 
-### Option 1: Install via npx (Recommended)
-
-```bash
-npx skills add https://github.com/theaayushstha1/job-applier-agent --skill apply-job
-```
-
-### Option 2: Clone and Setup
+### Clone and Setup (Recommended)
 
 ```bash
 # Clone the repository
@@ -39,9 +32,20 @@ git clone https://github.com/theaayushstha1/job-applier-agent.git ~/job-applier-
 # Review the install script before running
 cat ~/job-applier-agent/install.sh
 
-# Run setup script
+# Run setup script - installs from the clone, so local edits are preserved
 cd ~/job-applier-agent && bash install.sh
 ```
+
+`install.sh` refuses to run if the repo's two `SKILL.md` copies have drifted apart.
+
+### Installing via npx
+
+```bash
+npx skills add https://github.com/theaayushstha1/job-applier-agent --skill apply-job
+```
+
+This always fetches upstream and overwrites any local changes. If you are running a
+patched copy, use the clone method above instead.
 
 ---
 
@@ -55,20 +59,22 @@ mkdir -p ~/job-applier-agent/{data,resume,templates,applications,screenshots}
 
 ### Step 2: Install the Skill
 
+The skill files live in `skills/apply-job/` in this repo.
+
 **Option A: Copy to Claude skills directory**
 ```bash
 # macOS/Linux
 mkdir -p ~/.claude/skills/apply-job
-cp -r ./skill-files/* ~/.claude/skills/apply-job/
+cp -r ./skills/apply-job/* ~/.claude/skills/apply-job/
 
 # Windows (PowerShell)
-mkdir -Force "$env:USERPROFILE\.claude\skills\apply-job"
-Copy-Item -Recurse ./skill-files/* "$env:USERPROFILE\.claude\skills\apply-job/"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\apply-job"
+Copy-Item -Recurse .\skills\apply-job\* "$env:USERPROFILE\.claude\skills\apply-job\"
 ```
 
 **Option B: Symlink (for development)**
 ```bash
-ln -s ~/job-applier-agent/skill ~/.claude/skills/apply-job
+ln -s "$PWD/skills/apply-job" ~/.claude/skills/apply-job
 ```
 
 ### Step 3: Create Configuration Files
@@ -78,7 +84,7 @@ ln -s ~/job-applier-agent/skill ~/.claude/skills/apply-job
 cp ~/job-applier-agent/profile-template.json ~/job-applier-agent/data/profile.json
 
 # Create empty applications tracker
-echo '{"applications":[],"stats":{"total":0,"applied":0,"interviewed":0,"rejected":0,"offers":0,"emailsSent":0,"connectionsSent":0},"lastUpdated":""}' > ~/job-applier-agent/data/applications.json
+echo '{"applications":[],"stats":{"total":0,"applied":0,"interviewed":0,"rejected":0,"offers":0,"outreachDraftsPrepared":0,"outreachMarkedSent":0},"lastUpdated":""}' > ~/job-applier-agent/data/applications.json
 ```
 
 ### Step 4: Configure Your Profile
@@ -171,8 +177,10 @@ Thanks!
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 export APPLIER_HOME="$HOME/job-applier-agent"
-export SKIP_SKILL_GUARDRAILS=false  # Set true to disable confirmations
 ```
+
+There is no switch to disable the confirmation prompts. Submitting an application,
+sending an email, and sending a LinkedIn request always require explicit approval.
 
 ### Profile.json Reference
 
@@ -197,12 +205,14 @@ The agent uses Playwright MCP for browser automation.
 
 ### Install Playwright MCP
 
+The package is `@playwright/mcp` (published by Microsoft, the Playwright team).
+
 ```bash
 # Install globally
-npm install -g @anthropic/mcp-playwright
+npm install -g @playwright/mcp
 
 # Or use npx (no install needed)
-npx @anthropic/mcp-playwright
+npx @playwright/mcp@latest
 ```
 
 ### Configure Claude Code
@@ -214,11 +224,16 @@ Add to your Claude Code MCP settings (`~/.claude/settings.json`):
   "mcpServers": {
     "playwright": {
       "command": "npx",
-      "args": ["@anthropic/mcp-playwright"]
+      "args": ["@playwright/mcp@latest"]
     }
   }
 }
 ```
+
+> **Note:** earlier versions of these docs listed `@anthropic/mcp-playwright`. That
+> package does not exist on npm and the `@anthropic` scope is unpublished — pointing
+> `npx` at an unclaimed name means anyone who later registers it gets code execution
+> on every Claude Code launch. Use `@playwright/mcp`.
 
 ### Verify Installation
 
@@ -312,28 +327,6 @@ Error: Tool mcp__playwright__* not available
 2. Restart Claude Code
 3. Run `/mcp` to verify tools are loaded
 
-### Gmail Not Working
-
-```
-Error: Cannot find compose button
-```
-
-**Fix**:
-1. Ensure you're logged into Gmail in the browser
-2. Try navigating to Gmail manually first
-3. Check for any popups/modals blocking the UI
-
-### LinkedIn Rate Limited
-
-```
-Error: LinkedIn showing rate limit
-```
-
-**Fix**:
-1. Wait 24 hours before sending more connections
-2. Reduce connections per session (max 10-15)
-3. Use email as primary outreach
-
 ### Path Issues (Windows)
 
 If paths aren't resolving correctly on Windows:
@@ -381,7 +374,7 @@ To update the skill to the latest version:
 ```bash
 cd ~/job-applier-agent
 git pull origin main
-cp -r ./skill-files/* ~/.claude/skills/apply-job/
+cp -r ./skills/apply-job/* ~/.claude/skills/apply-job/
 ```
 
 ---

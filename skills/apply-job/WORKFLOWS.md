@@ -63,7 +63,8 @@ Step-by-step workflows for every command in the job application agent.
 
 4. Score job fit (0-10 each, skip if dealbreaker):
    - Technical Fit: (matching skills / required skills) * 10
-   - Level Match: Entry=10, Mid=7, Senior=3 for new grads
+   - Level Match: score against the user's actual experience in profile.json,
+     not a hardcoded new-grad assumption
    - Location: Remote=10, Preferred city=8, Relocation=5
    - Mission: AI/Tech=10, Other=5
 
@@ -165,11 +166,15 @@ Step-by-step workflows for every command in the job application agent.
    - Use profile.json for all fields
    - Upload resume file
    - Paste cover letter if text field exists
-   - Answer screening questions from profile.json defaults
+   - Answer screening questions from profile.json.application_defaults
+   - STOP: leave EEO / self-identification, work authorization, salary expectation,
+     and signature/attestation fields BLANK. List them for the user and let the user
+     answer. Never infer these from profile.json.
 
 3. Take pre-submit screenshot
 
-4. Confirm with user, then submit application
+4. Show the screenshot, list any fields left blank, and get explicit user
+   confirmation before clicking Submit
 
 5. Take confirmation screenshot
    - Save to ~/job-applier-agent/screenshots/<company>_<date>.png
@@ -190,7 +195,7 @@ Step-by-step workflows for every command in the job application agent.
    - Set company_research = true
    - Update stats (total, applied, avgFitScore, avgAtsScore)
 
-3. Execute recruiter outreach (see Recruiter Outreach Details)
+3. Build the outreach queue file (see Recruiter Outreach Details). Nothing is sent.
 ```
 
 ---
@@ -243,7 +248,7 @@ Step-by-step workflows for every command in the job application agent.
    - 10 applied successfully
    - 2 required login (skipped)
    - 1 form error (screenshot saved)
-   Emails sent: 15 | Connections: 20
+   Outreach drafts prepared: 15 contacts across 10 companies (none sent)
 ```
 
 ---
@@ -252,16 +257,16 @@ Step-by-step workflows for every command in the job application agent.
 
 **Trigger**: `/apply-job outreach <url>`
 
-Run ONLY the outreach portion for an already-applied job:
+Build the outreach queue for an already-applied job. Nothing is sent.
 
 ```
 1. Extract company name from URL
 2. Check if application exists in applications.json
-3. Find recruiters (see Recruiter Outreach Details)
-4. Find publicly available contact info
-5. Send cold emails
-6. Send LinkedIn connections
-7. Track in applications.json
+3. Identify recruiters, read-only (see Recruiter Outreach Details)
+4. Record publicly listed contact info only
+5. Write applications/<Company>/outreach_queue.md with drafts
+6. Record draft_prepared=true in applications.json
+7. Report the file path to the user and stop
 ```
 
 ---
@@ -284,8 +289,8 @@ Total Applications: 47
   Offers: 0
 
 Outreach Stats:
-  Emails Sent: 28
-  LinkedIn Connections: 45
+  Outreach drafts prepared: 28
+  Marked sent by you: 12
   Response Rate: 12%
 
 Scoring:
@@ -417,8 +422,8 @@ Follow-ups Due: 5 applications
    - Draft follow-up email:
      Subject: "Following Up - [Role] Application | [Name]"
      Body: Brief, polite follow-up referencing original application
-   - Offer to send via Gmail
-   - If sent, update follow_up_sent = true in applications.json
+   - Append it to that company's outreach_queue.md under "## Follow-up <date>"
+   - Do NOT send. The user sends it and ticks the box themselves.
 
 6. For OVERDUE items:
    - Draft second follow-up (shorter, more direct)
@@ -550,7 +555,7 @@ Follow-ups Due: 5 applications
    - Response rate: (interviewed + offers) / total
    - Category breakdown: count by category field
    - Category response rates: responses per category
-   - Outreach effectiveness: emails sent vs responses
+   - Outreach effectiveness: drafts you marked sent vs responses
    - Score distributions: fit score and ATS score averages
 
 5. Generate recommendations based on data:
@@ -570,8 +575,8 @@ Follow-ups Due: 5 applications
 
    This Week:
    - Applications: 12 (up from 8 last week)
-   - Emails sent: 8
-   - Connections sent: 12
+   - Outreach drafts prepared: 8
+   - Marked sent by you: 5
 
    All Time:
    - Total: 47 | Applied: 42 | Interviewing: 3
@@ -599,60 +604,79 @@ Follow-ups Due: 5 applications
 
 ## Recruiter Outreach Details
 
-### Order: Email FIRST, LinkedIn SECOND
+### HARD RULE: draft only, never send
 
-### Step 1: Find Recruiters on LinkedIn
+The agent does not open Gmail, does not open a compose window, does not click Send,
+does not visit LinkedIn to click Connect, and does not send LinkedIn messages. It
+produces a queue file. The user sends everything by hand.
 
-```
-1. Navigate to LinkedIn
-2. Search: "<company> recruiter" or "<company> talent acquisition"
-3. Find 3+ people with titles:
-   - Technical Recruiter
-   - Talent Acquisition
-   - University Recruiter
-   - Recruiting Coordinator
-   - Engineering Manager (backup)
-4. Extract for each:
-   - Full name
-   - Title
-   - LinkedIn URL
-```
+Rationale: automated LinkedIn interaction breaches LinkedIn's User Agreement and gets
+accounts restricted, and every message going out under the user's name should have a
+human behind it.
 
-### Step 2: Find Recruiter Contact Info
+### Step 1: Identify Recruiters (read-only)
 
 ```
-1. Check each recruiter's LinkedIn profile for public email/contact info
-2. Check the company careers page for recruiter contact details
-3. Look for the company's public contact or referral form
-4. Only use publicly listed contact information
+1. Find people associated with hiring at the company:
+   - Company careers / "meet the team" pages
+   - Public web search for "<company> talent acquisition" / "<company> recruiter"
+   - A LinkedIn profile URL may be RECORDED if it appears in public search results
+2. Prefer titles: Technical Recruiter, Talent Acquisition, University Recruiter,
+   Recruiting Coordinator, Hiring Manager for the team
+3. Capture: full name, title, LinkedIn profile URL (as text, not visited)
+4. Cap at 3 contacts per company. This is targeted outreach, not a mail merge.
 ```
 
-### Step 3: Send Cold Emails (PRIMARY)
+### Step 2: Contact Info — Publicly Listed Only
 
 ```
-1. Open Gmail: https://mail.google.com
-2. Click Compose
-3. Fill fields:
-   - To: discovered email
-   - Subject: "Referral Request - [Role] Application | [School] Senior"
-   - Body: Use cold email template from profile
-4. Confirm with user, then send
-5. Track: email_sent=true, email_date=today
+1. Use an email address ONLY if it is publicly published (careers page, personal
+   site, conference bio, public LinkedIn contact section)
+2. NEVER guess, NEVER derive from a company pattern (first.last@company.com),
+   NEVER use an email-finder service
+3. If no public address exists, record "not found" and note the company's public
+   application/referral form instead
 ```
 
-### Step 4: Send LinkedIn Connections (SECONDARY)
+Guessed addresses bounce, damage sender reputation, and mean emailing someone who
+never published a way to be contacted.
 
-**Only after ALL emails are sent!**
+### Step 3: Write the Outreach Queue File
 
+Save to `~/job-applier-agent/applications/<Company>/outreach_queue.md`:
+
+```markdown
+# Outreach Queue — <Company>
+Role: <Job Title>
+Applied: <date>   |   Job URL: <url>
+STATUS: NOT SENT — send these yourself
+
+---
+
+## 1. <Full Name> — <Title>
+LinkedIn: <profile url>
+Email: <public address, or "not found — no public address">
+
+### Email draft
+Subject: <subject line>
+
+<full body, ready to paste, personalised to this company and role>
+
+### LinkedIn note (300 char max)
+<short note referencing the specific role and one concrete point of overlap>
+
+- [ ] Email sent
+- [ ] LinkedIn note sent
+
+---
+
+## 2. <Full Name> — <Title>
+...
 ```
-1. Navigate to recruiter's LinkedIn profile
-2. Click "More" button
-3. Click "Connect"
-4. Send WITHOUT note (faster, still effective)
-5. Track: connection_sent=true
-```
 
-### Step 5: Update Tracking
+### Step 4: Update Tracking
+
+Outreach is recorded as *prepared*, never as sent. Only the user edits the sent flags.
 
 ```json
 "outreach": [
@@ -660,14 +684,19 @@ Follow-ups Due: 5 applications
     "name": "Jane Doe",
     "title": "Technical Recruiter",
     "email": "jdoe@company.com",
+    "email_source": "public careers page",
     "linkedin": "linkedin.com/in/janedoe",
-    "email_sent": true,
-    "email_date": "2026-01-27",
-    "connection_sent": true,
-    "connection_date": "2026-01-27"
+    "draft_prepared": true,
+    "prepared_date": "2026-07-29",
+    "email_sent": false,
+    "connection_sent": false
   }
 ]
 ```
+
+### Step 5: Report
+
+Tell the user the queue file path and how many contacts it holds. Stop there.
 
 ---
 
@@ -758,8 +787,7 @@ Best,
 | CAPTCHA | Notify user, wait for manual solve |
 | Rate limited | Wait 60s, retry once, skip if blocked |
 | Form field not found | Screenshot, ask user to identify |
-| Email bounce | Log failure, continue with others |
-| LinkedIn limit | Note in tracking, try again tomorrow |
+| No public email found | Record "not found", note the public application form |
 | Duplicate found | Show previous app, ask to proceed |
 | Dealbreaker | Show reason, default to skip |
 | ATS score < 60 | Warn user, suggest improvements, still proceed |
